@@ -31,30 +31,59 @@ resource "random_string" "this" {
 
 # For uploading raw input documents 
 resource "aws_s3_bucket" "input_documents" {
-  bucket = "hkt-idp-input-documents-${random_string.this.result}"
+  bucket        = "hkt-idp-input-documents-${random_string.this.result}"
+  force_destroy = true # since this is just for a sandbox env
+}
+
+resource "aws_s3_bucket_ownership_controls" "input_documents" {
+  bucket = aws_s3_bucket.input_documents.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
 }
 
 resource "aws_s3_bucket_acl" "input_documents" {
+  depends_on = [aws_s3_bucket_ownership_controls.input_documents]
+
   bucket = aws_s3_bucket.input_documents.id
   acl    = "private"
 }
 
 # For saving the classification prompt results 
 resource "aws_s3_bucket" "classified_documents" {
-  bucket = "hkt-idp-classified-documents-${random_string.this.result}"
+  bucket        = "hkt-idp-classified-documents-${random_string.this.result}"
+  force_destroy = true # since this is just for a sandbox env
+}
+
+resource "aws_s3_bucket_ownership_controls" "classified_documents" {
+  bucket = aws_s3_bucket.classified_documents.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
 }
 
 resource "aws_s3_bucket_acl" "classified_documents" {
-  bucket = aws_s3_bucket.input_documents.id
-  acl    = "private"
+  depends_on = [aws_s3_bucket_ownership_controls.classified_documents]
+  bucket     = aws_s3_bucket.classified_documents.id
+  acl        = "private"
 }
 
 # For any documents enriched by Amazon Bedrock
 resource "aws_s3_bucket" "enriched_documents" {
-  bucket = "hkt-idp-enriched-documents-${random_string.this.result}"
+  bucket        = "hkt-idp-enriched-documents-${random_string.this.result}"
+  force_destroy = true # since this is just for a sandbox env
+}
+
+resource "aws_s3_bucket_ownership_controls" "enriched_documents" {
+  bucket = aws_s3_bucket.enriched_documents.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
 }
 
 resource "aws_s3_bucket_acl" "enriched_documents" {
+  depends_on = [aws_s3_bucket_ownership_controls.enriched_documents]
+
   bucket = aws_s3_bucket.enriched_documents.id
   acl    = "private"
 }
