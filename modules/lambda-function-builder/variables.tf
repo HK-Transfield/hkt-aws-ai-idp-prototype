@@ -2,12 +2,7 @@
 # Lambda function configurations
 ################################################################################
 
-variable "lambda_role_name" {
-  type        = string
-  description = "The name of the Lambda function role to attach"
-}
-
-variable "lambda_function_name" {
+variable "lambda_filename" {
   type        = string
   description = "The name of the Lambda function being deployed"
 }
@@ -27,10 +22,14 @@ variable "environment_variables" {
 # IAM resource configurations
 ################################################################################
 
+variable "iam_role_name" {
+  type        = string
+  description = "The name of the Lambda function role to attach"
+}
+
 variable "iam_policy_name" {
   type        = string
   description = "The name of the IAM policy to attach the Lambda function role"
-  default     = ""
 }
 
 variable "iam_policy_json" {

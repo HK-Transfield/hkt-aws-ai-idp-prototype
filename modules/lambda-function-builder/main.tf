@@ -13,7 +13,7 @@ data "aws_region" "current" {}
 ################################################################################
 
 resource "aws_iam_role" "this" {
-  name = var.lambda_role_name
+  name = var.iam_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -42,19 +42,25 @@ resource "aws_iam_role_policy_attachment" "this" {
 ################################################################################
 
 locals {
-  lambda_source  = "${path.module}/${var.lambda_function_name}.py"
-  lambda_handler = "${var.lambda_function_name}.lambda_handler"
-  lambda_zip     = "${var.lambda_function_name}.zip"
+  lambda_source  = "${path.root}/lambda/${var.lambda_filename}/index.py"
+  lambda_output  = "${path.root}/lambda-zips/${var.lambda_filename}.zip"
+  lambda_handler = "${var.lambda_filename}.lambda_handler"
 }
 
-resource "aws_lambda_function" "sqs_processor_lambda" {
-  function_name = var.lambda_function_name
-  role          = aws_iam_role.lambda_role.arn
+data "archive_file" "this" {
+  type        = "zip"
+  source_file = local.lambda_source
+  output_path = local.lambda_output
+}
+
+resource "aws_lambda_function" "this" {
+  function_name = var.lambda_filename
+  role          = aws_iam_role.this.arn
   runtime       = var.lambda_function_runtime
   handler       = local.lambda_handler
 
-  filename         = local.lambda_zip
-  source_code_hash = filebase64sha256(local.lambda_zip)
+  filename         = data.archive_file.this.output_path
+  source_code_hash = data.archive_file.this.output_base64sha256
 
   environment {
     variables = var.environment_variables
