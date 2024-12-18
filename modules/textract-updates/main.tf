@@ -16,44 +16,48 @@ data "aws_region" "current" {}
 # SNS Topic & SQS Queue for Textract notifications
 ################################################################################
 
-resource "aws_sns_topic" "textract_updates" {
+resource "aws_sns_topic" "this" {
   name = var.sns_topic_name
 }
 
-resource "aws_sqs_queue" "textract_updates" {
-  name   = var.sqs_queue_name
-  policy = aws_sqs_queue_policy.textract_policy.policy
+resource "aws_sqs_queue" "this" {
+  name = var.sqs_queue_name
 }
 
-resource "aws_sns_topic_subscription" "textract_updates_sqs_target" {
-  topic_arn  = aws_sns_topic.textract_updates.arn
+resource "aws_sns_topic_subscription" "this" {
+  topic_arn  = aws_sns_topic.this.arn
   protocol   = "sqs"
-  endpoint   = aws_sqs_queue.textract_updates.arn
-  depends_on = [aws_sqs_queue_policy.textract_policy]
+  endpoint   = aws_sqs_queue.this.arn
+  depends_on = [aws_sqs_queue_policy.this]
 }
 
-resource "aws_sqs_queue_policy" "textract_policy" {
-  queue_url = aws_sqs_queue.textract_queue.id
+data "aws_iam_policy_document" "this" {
+  statement {
+    sid    = "SQSSendMessage"
+    effect = "Allow"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "sqs:SendMessage"
-        Resource  = aws_sqs_queue.textract_updates.arn
-        Condition = {
-          ArnEquals = {
-            "aws:SourceArn" = aws_sns_topic.textract_updates.arn
-          }
-        }
-      }
-    ]
-  })
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.this.arn]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_sns_topic.this.arn]
+    }
+  }
 }
 
-resource "aws_iam_role" "textract_sns" {
+resource "aws_sqs_queue_policy" "this" {
+  queue_url = aws_sqs_queue.this.id
+  policy    = data.aws_iam_policy_document.this.json
+}
+
+resource "aws_iam_role" "this" {
   name = "textract_sns_role"
 
   assume_role_policy = jsonencode({
@@ -70,8 +74,8 @@ resource "aws_iam_role" "textract_sns" {
   })
 }
 
-resource "aws_iam_role_policy" "textract_sns" {
-  role = aws_iam_role.textract_role.id
+resource "aws_iam_role_policy" "this" {
+  role = aws_iam_role.this.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -79,7 +83,7 @@ resource "aws_iam_role_policy" "textract_sns" {
       {
         Effect   = "Allow"
         Action   = "sns:Publish"
-        Resource = aws_sns_topic.textract_updates.arn
+        Resource = aws_sns_topic.this.arn
       }
     ]
   })

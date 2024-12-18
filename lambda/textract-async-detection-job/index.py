@@ -2,9 +2,19 @@ import boto3
 import os
 
 def lambda_handler(event, context):
+    """
+    A Lambda function triggered when documents are uploaded
+    to an S3 bucket.
+
+    args:
+        event (obj): the trigger for the function
+        context (obj): methods and props about the invocation, function, and exec env
+    """
     textract = boto3.client('textract')
-    s3_bucket = os.environ['BUCKET_NAME']
     document = event['document']
+
+    # env variables
+    s3_bucket = os.environ['BUCKET_NAME']
     sns_topic_arn = os.environ['SNS_TOPIC_ARN']
     role_arn = os.environ['TEXTRACT_ROLE_ARN']
 
