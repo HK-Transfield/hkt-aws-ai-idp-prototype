@@ -11,7 +11,7 @@ The architecture for this project is based on the architecture diagram
 provided by the AWS Solutions
 
 At a high level, the solution performs the following functions:
-  - Documents are uploaded to a storage bucket, triggering an asynchronous Amazon Textract detection job. 
+  - Upload documents to a storage bucket, triggering an asynchronous Amazon Textract detection job. 
   - Extracted text is classified and enriched using artificial intelligence and machine learning (AI/ML). 
   - Results are stored in the storage bucket. 
   - Automated validation and review steps.
@@ -29,7 +29,7 @@ resource "random_string" "this" {
 # Document and Data Storage
 ################################################################################
 
-# For uploading raw input documents 
+# Uploading raw input documents 
 resource "aws_s3_bucket" "input_documents" {
   bucket        = "hkt-idp-input-documents-${random_string.this.result}"
   force_destroy = true # since this is just for a sandbox env
@@ -49,7 +49,7 @@ resource "aws_s3_bucket_acl" "input_documents" {
   acl    = "private"
 }
 
-# For saving the classification prompt results 
+# Saving the classification prompt results 
 resource "aws_s3_bucket" "classified_documents" {
   bucket        = "hkt-idp-classified-documents-${random_string.this.result}"
   force_destroy = true # since this is just for a sandbox env
@@ -68,7 +68,7 @@ resource "aws_s3_bucket_acl" "classified_documents" {
   acl        = "private"
 }
 
-# For any documents enriched by Amazon Bedrock
+# Documents enriched by Amazon Bedrock
 resource "aws_s3_bucket" "enriched_documents" {
   bucket        = "hkt-idp-enriched-documents-${random_string.this.result}"
   force_destroy = true # since this is just for a sandbox env
@@ -142,30 +142,44 @@ module "textract_updates_lambda_function" {
   iam_policy_json = data.aws_iam_policy_document.allow_lambda_textract_async_job.json
 }
 
-# ################################################################################
-# # Allow Lambda to get SQS queue triggers and read Textract output
-# ################################################################################
+################################################################################
+# Allow Lambda to get SQS queue triggers and read Textract output
+################################################################################
 
-# data "aws_iam_policy_document" "allow_lambda_classify_documents" {
-#   statement {
-#     sid    = "ProcessClassifiedDocuments"
-#     effect = "Allow"
+data "aws_iam_policy_document" "allow_lambda_classify_documents" {
+  statement {
+    sid    = "ProcessClassifiedDocuments"
+    effect = "Allow"
 
-#     actions = [
-#       "s3:PutObject",
-#       "s3:GetObject",
-#       "textract:GetDocumentTextDetection",
-#       "bedrock:InvokeModel",
-#       "sqs:ReceiveMessage",
-#       "sqs:DeleteMessage",
-#       "logs:CreateLogGroup",
-#       "logs:CreateLogStream",
-#       "logs:PutLogEvents"
-#     ]
-#     resources = ["*"]
-#   }
-# }
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "textract:GetDocumentTextDetection",
+      "bedrock:InvokeModel",
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["*"]
+  }
+}
 
+module "textract_updates_lambda_function" {
+  source = "./modules/lambda-function-builder"
+
+  lambda_filename = "classify-documents"
+
+  environment_variables = {
+    RESULT_BUCKET = aws_s3_bucket.results.bucket
+    TEXTRACT_ROLE = aws_iam_role.lambda_role.arn
+  }
+
+  iam_role_name   = "AllowLambdaBedrockClassifier"
+  iam_policy_name = "AllowLambdaBedrockClassifier"
+  iam_policy_json = data.aws_iam_policy_document.allow_lambda_textract_async_job.json
+}
 # ################################################################################
 # # Allow Lambda to process document content according to the classification
 # ################################################################################

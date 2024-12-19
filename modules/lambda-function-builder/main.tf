@@ -42,8 +42,8 @@ resource "aws_iam_role_policy_attachment" "this" {
 ################################################################################
 
 locals {
-  lambda_source  = "${path.root}/lambda/${var.lambda_filename}/index.py"
-  lambda_output  = "${path.root}/lambda-zips/${var.lambda_filename}.zip"
+  lambda_source  = "${path.root}/lambdas/${var.lambda_filename}/index.py"
+  lambda_output  = "${path.root}/archives/${var.lambda_filename}.zip"
   lambda_handler = "${var.lambda_filename}.lambda_handler"
 }
 
