@@ -40,14 +40,21 @@ terraform plan -out="$PLANFILE"
 if [[ "$APPLY_FLAG" == "--apply" ]]; then
     echo "Applying Terraform changes..."
     terraform apply "$PLANFILE"
+
+    # DATA_BUCKET = "$(terraform output -raw data_bucket)"
+    # aws s3 cp classification-training s3://{data_bucket}/idp/textract --recursive --only-show-errors
+
 elif [[ "$APPLY_FLAG" == "--no-apply" ]]; then
     echo "Skipping Terraform apply."
+
 else
     # Interactive prompt if no flag is provided
     read -p "Do you want to apply the plan? (yes/no): " RESPONSE
+    
     if [[ "$RESPONSE" == "yes" ]]; then
         echo "Applying Terraform changes..."
         terraform apply "$PLANFILE"
+    
     else
         echo "Skipping Terraform apply."
     fi
