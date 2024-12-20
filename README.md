@@ -16,21 +16,20 @@
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_classify_textract_output_lambda_function"></a> [classify\_textract\_output\_lambda\_function](#module\_classify\_textract\_output\_lambda\_function) | ./modules/lambda-function-builder | n/a |
+| <a name="module_enriched_documents"></a> [enriched\_documents](#module\_enriched\_documents) | ./modules/document-storage | n/a |
+| <a name="module_input_documents"></a> [input\_documents](#module\_input\_documents) | ./modules/document-storage | n/a |
+| <a name="module_textract_events"></a> [textract\_events](#module\_textract\_events) | ./modules/event-driven-updates | n/a |
 | <a name="module_textract_updates_lambda_function"></a> [textract\_updates\_lambda\_function](#module\_textract\_updates\_lambda\_function) | ./modules/lambda-function-builder | n/a |
-| <a name="module_textract_updates_queues_and_notifications"></a> [textract\_updates\_queues\_and\_notifications](#module\_textract\_updates\_queues\_and\_notifications) | ./modules/textract-updates | n/a |
 
 ## Resources
 
 | Name | Type |
 |------|------|
-| [aws_s3_bucket.classified_documents](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/resources/s3_bucket) | resource |
-| [aws_s3_bucket.enriched_documents](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/resources/s3_bucket) | resource |
-| [aws_s3_bucket.input_documents](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/resources/s3_bucket) | resource |
-| [aws_s3_bucket_acl.classified_documents](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/resources/s3_bucket_acl) | resource |
-| [aws_s3_bucket_acl.enriched_documents](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/resources/s3_bucket_acl) | resource |
-| [aws_s3_bucket_acl.input_documents](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/resources/s3_bucket_acl) | resource |
+| [aws_lambda_event_source_mapping.textract_output](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/resources/lambda_event_source_mapping) | resource |
 | [random_string.this](https://registry.terraform.io/providers/hashicorp/random/3.6.3/docs/resources/string) | resource |
 | [aws_iam_policy_document.allow_lambda_textract_async_job](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.lambda_exec_policy](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/data-sources/iam_policy_document) | data source |
 
 ## Inputs
 

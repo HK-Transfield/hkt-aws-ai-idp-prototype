@@ -1,23 +1,31 @@
 /*
-Name: AWS AI IDP Prototype
-Author: Harmon Transfield
+Name: AWS AI Backed IDP Architecture
+Author: HK Transfield, 2024
 
-This project provides a Terraform configuration for deploying an 
-Intelligent Document Processing (IDP) solution in an AWS environment. 
-The purpose of an IDP solution is to reduce the overall costs 
-associated with typical document workflows.
-
-The architecture for this project is based on the architecture diagram
-provided by the AWS Solutions
+This configuration deploys an Intelligent Document Processing (IDP) solution 
+within in an AWS environment. The object of an IDP solution is to reduce the 
+overall costs associated with typical document workflows.
 
 At a high level, the solution performs the following functions:
-  - Documents are uploaded to a storage bucket, triggering an asynchronous Amazon Textract detection job. 
-  - Extracted text is classified and enriched using artificial intelligence and machine learning (AI/ML). 
-  - Results are stored in the storage bucket. 
-  - Automated validation and review steps.
-  - Human review facilitated through Amazon Augmented AI (A2I) when necessary. 
-  - Verified data is stored in a fully managed NoSQL database service and available for downstream applications.
+
+  - Upload documents to an S3 bucket, triggering an asynchronous 
+    Textract detection job 
+  
+  - Classify and enrich extracted text using AI/ML
+  
+  - Store results in another S3 bucket
+  
+  - Automate validation and review steps
+  
+  - Faciliate human reviews through A2I when necessary
+  
+  - Store verified data in a fully managed NoSQL database service 
+    made available for downstream apps
 */
+
+provider "aws" {
+  region = "us-east-1"
+}
 
 resource "random_string" "this" {
   length  = 16
@@ -26,43 +34,23 @@ resource "random_string" "this" {
 }
 
 ################################################################################
-# Document and Data Storage
+# DOCUMENT INGESTION AND TEXT EXTRACTION
 ################################################################################
 
-# For uploading raw input documents 
-resource "aws_s3_bucket" "input_documents" {
-  bucket = "hkt-idp-input-documents-${random_string.this.result}"
+locals {
+  iam_entity_name = "AllowLambdaTextractAsyncJob"
+  updates_name    = "hkt-idp-textract-job"
 }
 
-resource "aws_s3_bucket_acl" "input_documents" {
-  bucket = aws_s3_bucket.input_documents.id
-  acl    = "private"
+module "input_documents" {
+  source = "./modules/document-storage"
+
+  bucket_name   = "hkt-idp-input-documents"
+  force_destroy = true
+
 }
 
-# For saving the classification prompt results 
-resource "aws_s3_bucket" "classified_documents" {
-  bucket = "hkt-idp-classified-documents-${random_string.this.result}"
-}
-
-resource "aws_s3_bucket_acl" "classified_documents" {
-  bucket = aws_s3_bucket.input_documents.id
-  acl    = "private"
-}
-
-# For any documents enriched by Amazon Bedrock
-resource "aws_s3_bucket" "enriched_documents" {
-  bucket = "hkt-idp-enriched-documents-${random_string.this.result}"
-}
-
-resource "aws_s3_bucket_acl" "enriched_documents" {
-  bucket = aws_s3_bucket.enriched_documents.id
-  acl    = "private"
-}
-
-################################################################################
-# Start a Textract async detection job through Lambda
-################################################################################
-
+# allow lambda to start textract jobs and access input documents bucket
 data "aws_iam_policy_document" "allow_lambda_textract_async_job" {
   statement {
     sid    = "EnableCloudWatchLogs"
@@ -86,90 +74,109 @@ data "aws_iam_policy_document" "allow_lambda_textract_async_job" {
       "s3:GetObject",
       "s3:PutObject"
     ]
-    resources = ["${aws_s3_bucket.input_documents.arn}/*"]
+    resources = ["${module.input_documents.bucket_arn}/*"]
   }
 }
 
-module "textract_updates_queues_and_notifications" {
-  source = "./modules/textract-updates"
+module "textract_events" {
+  source = "./modules/textract-event-handler"
 
-  sns_topic_name = "hkt-idp-textract-completion-topic"
-  sqs_queue_name = "hkt-idp-textract-completion-queue"
+  sns_topic_name = "${local.updates_name}-topic"
+  sqs_queue_name = "${local.updates_name}-queue"
 }
 
+# Lamda function to start Textract async detection job
 module "textract_updates_lambda_function" {
   source = "./modules/lambda-function-builder"
 
-  lambda_filename = "textract-async-detection-job"
+  lambda_filename = "1-start-textract-async-detection-job"
 
   environment_variables = {
-    BUCKET_NAME       = aws_s3_bucket.input_documents.bucket
-    SNS_TOPIC_ARN     = module.textract_updates_queues_and_notifications.sns_topic_arn
-    TEXTRACT_ROLE_ARN = module.textract_updates_queues_and_notifications.sns_iam_role_arn
+    SNS_TOPIC_ARN = module.textract_events.sns_topic_arn
+    SNS_ROLE_ARN  = module.textract_events.sns_iam_role_arn
   }
 
-  iam_role_name   = "AllowLambdaTextractAsyncJob"
-  iam_policy_name = "AllowLambdaTextractAsyncJob"
+  iam_role_name   = local.iam_entity_name
+  iam_policy_name = local.iam_entity_name
   iam_policy_json = data.aws_iam_policy_document.allow_lambda_textract_async_job.json
 }
 
-# ################################################################################
-# # Allow Lambda to get SQS queue triggers and read Textract output
-# ################################################################################
+################################################################################
+# DOCUMENT CLASSIFICATION
+################################################################################
 
-# data "aws_iam_policy_document" "allow_lambda_classify_documents" {
-#   statement {
-#     sid    = "ProcessClassifiedDocuments"
-#     effect = "Allow"
+resource "aws_lambda_event_source_mapping" "textract_output" {
+  event_source_arn = module.textract_events.sqs_queue_arn
+  function_name    = module.process_documents_lambda.function_arn
+  batch_size       = 10
+}
 
-#     actions = [
-#       "s3:PutObject",
-#       "s3:GetObject",
-#       "textract:GetDocumentTextDetection",
-#       "bedrock:InvokeModel",
-#       "sqs:ReceiveMessage",
-#       "sqs:DeleteMessage",
-#       "logs:CreateLogGroup",
-#       "logs:CreateLogStream",
-#       "logs:PutLogEvents"
-#     ]
-#     resources = ["*"]
-#   }
-# }
+data "aws_iam_policy_document" "lambda_exec_policy" {
+  statement {
+    sid    = "InvokeLambdaFunction"
+    effect = "Allow"
 
-# ################################################################################
-# # Allow Lambda to process document content according to the classification
-# ################################################################################
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes"
+    ]
+    resources = [module.textract_events.sqs_queue_arn]
+  }
 
-# data "aws_iam_policy_document" "allow_lambda_enrich_documents" {
-#   statement {
-#     sid    = "EnableCloudWatchLogs"
-#     effect = "Allow"
+  statement {
+    sid    = "ReadTextractOutput"
+    effect = "Allow"
 
-#     actions = [
-#       "logs:CreateLogGroup",
-#       "logs:CreateLogStream",
-#       "logs:PutLogEvents"
-#     ]
-#     resources = ["arn:aws:logs:*:*:*"]
-#   }
+    actions = [
+      "textract:DetectDocumentText",
+      "s3:PutObject",
+      "s3:GetObject"
+    ]
+    resources = ["*"]
+  }
 
-#   statement {
-#     sid    = "SaveEnrichedDocumentsToS3"
-#     effect = "Allow"
+  statement {
+    sid    = "InvokeBedrockModel"
+    effect = "Allow"
 
-#     actions = [
-#       "s3:GetObject",
-#       "s3:PutObject"
-#     ]
-#     resources = ["${aws_s3_bucket.enriched_documents.arn}/*"]
-#   }
+    actions = [
+      "bedrock:InvokeModel"
+    ]
+    resources = ["*"]
+  }
+}
 
-#   statement {
-#     sid    = "InvokeBedrockModel"
-#     effect = "Allow"
+module "classify_textract_output_lambda_function" {
+  source = "./modules/lambda-function-builder"
 
-#     actions   = ["bedrock:InvokeModel"]
-#     resources = ["*"]
-#   }
-# }
+  lambda_filename = "2-classify-textract-output"
+
+  environment_variables = {
+    OUTPUT_BUCKET = aws_s3_bucket.enriched_documents.bucket
+  }
+
+  iam_role_name   = "AllowLambdaEnrichDocumentContent"
+  iam_policy_name = "AllowLambdaEnrichDocumentContent"
+  iam_policy_json = data.aws_iam_policy_document.lambda_exec_policy.json
+}
+
+module "enriched_documents" {
+  source = "./modules/document-storage"
+
+  bucket_name   = "hkt-idp-enriched-documents"
+  force_destroy = true
+
+}
+
+################################################################################
+# ENTITY EXTRACTION AND CONTENT ENRICHMENT
+################################################################################
+
+# TODO
+
+################################################################################
+# RESULTS VALIDATION
+################################################################################
+
+# TODO
