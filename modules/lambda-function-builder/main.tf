@@ -1,9 +1,17 @@
 /*
-Name: AWS Lambda Function Builder
+Name: Lambda Function Builder
 Author: HK Transifeld, 2024
 
-This module deploys the resources needed to set up 
-any Lambda functions for the IDP.
+This module configures the resources needed to set up 
+any Lambda functions with the intended policies and
+settings.
+
+This module is intended to be used as a building block
+for functions that perform the following tasks:
+  - Document processing
+  - Document classification
+  - Document enrichment and extraction
+  - Review and validation automation
 */
 
 data "aws_region" "current" {}
