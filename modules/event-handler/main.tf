@@ -1,13 +1,12 @@
 /*
-Name: Intelligent Document Processing on AWS
+Name: Event Handler Module
 Author: HK Transifeld, 2024
 
-This module deploys the resources needed to store
-documents via S3. It upload documents to S3 to invoke 
-a Lambda Function for processing documents.
-
-Afterwards, it starts a Textract asynchronous job by 
-using a Lambda function. The Lambda function is triggered by S3 events.
+This module creates an SNS topic and SQS queue for Textract 
+notifications. Textract will send a completion notification 
+to the SNS topic, which it will send to the SQS queue. The 
+SQS queue will invoke a Lambda function to process and read 
+the Textract results.
 */
 
 data "aws_region" "current" {}
@@ -25,9 +24,11 @@ resource "aws_sqs_queue" "this" {
 }
 
 resource "aws_sns_topic_subscription" "this" {
-  topic_arn  = aws_sns_topic.this.arn
-  protocol   = "sqs"
-  endpoint   = aws_sqs_queue.this.arn
+  topic_arn = aws_sns_topic.this.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.this.arn
+
+  # allow SNS to send message to SQS
   depends_on = [aws_sqs_queue_policy.this]
 }
 
@@ -58,7 +59,7 @@ resource "aws_sqs_queue_policy" "this" {
 }
 
 resource "aws_iam_role" "this" {
-  name = "textract_sns_role"
+  name = "sns_role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

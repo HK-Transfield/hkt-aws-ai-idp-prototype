@@ -38,3 +38,5 @@ No modules.
 |------|-------------|
 | <a name="output_sns_iam_role_arn"></a> [sns\_iam\_role\_arn](#output\_sns\_iam\_role\_arn) | n/a |
 | <a name="output_sns_topic_arn"></a> [sns\_topic\_arn](#output\_sns\_topic\_arn) | n/a |
+| <a name="output_sqs_queue_arn"></a> [sqs\_queue\_arn](#output\_sqs\_queue\_arn) | n/a |
+| <a name="output_sqs_queue_url"></a> [sqs\_queue\_url](#output\_sqs\_queue\_url) | n/a |
