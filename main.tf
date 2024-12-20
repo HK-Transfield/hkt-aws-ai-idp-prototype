@@ -79,7 +79,7 @@ data "aws_iam_policy_document" "allow_lambda_textract_async_job" {
 }
 
 module "textract_events" {
-  source = "./modules/event-driven-updates"
+  source = "./modules/textract-event-handler"
 
   sns_topic_name = "${local.updates_name}-topic"
   sqs_queue_name = "${local.updates_name}-queue"
