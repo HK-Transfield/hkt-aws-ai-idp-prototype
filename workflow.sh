@@ -59,3 +59,7 @@ else
         echo "Skipping Terraform apply."
     fi
 fi
+
+cd app
+
+python -m streamlit run app.py
