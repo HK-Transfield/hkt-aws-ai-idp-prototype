@@ -1,5 +1,5 @@
 /*
-Name: AWS AI Backed IDP Architecture
+Name: AWS Generative AI Backed IDP Solution
 Author: HK Transfield, 2024
 
 This configuration deploys an Intelligent Document Processing (IDP) solution 
@@ -33,13 +33,19 @@ resource "random_string" "this" {
   upper   = false
 }
 
+locals {
+  project_org  = "hkt"
+  project_tag  = "idp"
+  project_name = "${local.project_org}-${local.project_tag}"
+}
+
 ################################################################################
 # DOCUMENT INGESTION AND TEXT EXTRACTION
 ################################################################################
 
 locals {
   iam_entity_name = "AllowLambdaTextractAsyncJob"
-  updates_name    = "hkt-idp-textract-job"
+  updates_name    = "${local.project_name}-textract-job"
 }
 
 module "input_documents" {
@@ -153,7 +159,7 @@ module "classify_textract_output_lambda_function" {
   lambda_filename = "2-classify-textract-output"
 
   environment_variables = {
-    OUTPUT_BUCKET = aws_s3_bucket.enriched_documents.bucket
+    OUTPUT_BUCKET = aws_s3_bucket.classified_documents.bucket
   }
 
   iam_role_name   = "AllowLambdaEnrichDocumentContent"
@@ -161,10 +167,10 @@ module "classify_textract_output_lambda_function" {
   iam_policy_json = data.aws_iam_policy_document.lambda_exec_policy.json
 }
 
-module "enriched_documents" {
+module "classified_documents" {
   source = "./modules/document-storage"
 
-  bucket_name   = "hkt-idp-enriched-documents"
+  bucket_name   = "${local.project_name}-classfied-documents"
   force_destroy = true
 
 }
@@ -173,10 +179,27 @@ module "enriched_documents" {
 # ENTITY EXTRACTION AND CONTENT ENRICHMENT
 ################################################################################
 
-# TODO
+module "entity_extraction_and_content_enrichment" {
+  source = "./modules/lambda-function-builder"
+
+  lambda_filename = "3-entity-extraction-and-content-enrichment"
+
+  environment_variables = {
+    OUTPUT_BUCKET = aws_s3_bucket.enriched_documents.bucket
+  }
+
+  iam_role_name   = "AllowLambdaEnrichDocumentContent"
+  iam_policy_name = "AllowLambdaEnrichDocumentContent"
+  iam_policy_json = data.aws_iam_policy_document.lambda_exec_policy.json
+}
 
 ################################################################################
 # RESULTS VALIDATION
 ################################################################################
 
-# TODO
+module "extracted_data_and_enriched_documents" {
+  source = "./modules/document-storage"
+
+  bucket_name   = "${local.project_name}-extracted-data-and-enriched-documents"
+  force_destroy = true
+}
