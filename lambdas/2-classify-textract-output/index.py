@@ -27,7 +27,7 @@ def lambda_handler(event, context):
         raw_text = ' '.join([item['DetectedText'] for item in response['Blocks'] if item['BlockType'] == 'LINE'])
         
         # Call Bedrock with classification prompt
-        prompt = f"Classify the following document text: {raw_text}"
+        prompt = format_classification_prompt(raw_text)
         bedrock_response = bedrock.invoke_model(ModelId='your-model-id', ContentType='application/json', Body=json.dumps({'prompt': prompt}))
         classification_result = json.loads(bedrock_response['Body'].read())
         
@@ -42,3 +42,31 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': json.dumps('Processing complete')
     }
+
+def format_classification_prompt(document_content):
+    """Formats the prompt for the Bedrock LLM to classifiy documents based on contents.
+    
+    args:
+        document_content: str: The content of the document to be classified.
+    """
+
+    return f"""
+    Given the document
+
+    <document>{document_content}</document>
+
+    classify the document into the following classes
+
+    <classes>
+    DRIVERS_LICENSE
+    INSURANCE_ID
+    RECEIPT
+    BANK_STATEMENT
+    W2
+    MEETING_MINUTES
+    </classes>
+
+
+
+    return only the CLASS_NAME with no preamble or explanation. 
+    """

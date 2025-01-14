@@ -2,14 +2,13 @@ __author__ = "HK Transfield"
 __status__ = "Development"
 __license__  = "GPL-3.0"
 
-import json
 import boto3
 import os
+import json
 
 s3 = boto3.client('s3')
-bedrock = boto3.client('bedrock')
 
-def lambda_handler(event, context):
+def lambda_handler(event, _):
     # Get the bucket and object key from the event
     source_bucket = event['Records'][0]['s3']['bucket']['name']
     object_key = event['Records'][0]['s3']['object']['key']
@@ -18,8 +17,9 @@ def lambda_handler(event, context):
     response = s3.get_object(Bucket=source_bucket, Key=object_key)
     document_content = response['Body'].read().decode('utf-8')
     
-    # Classify the document content (this is a placeholder, implement your own logic)
-    classification = classify_document(document_content)
+    # Get classification results from the S3 bucket
+    classification_response = s3.get_object(Bucket=source_bucket, Key='classification_result')
+    classification = classification_response['Body'].read().decode('utf-8')
     
     # Create enrichment instructions based on classification
     enrichment_instructions = create_enrichment_instructions(classification)
@@ -37,18 +37,21 @@ def lambda_handler(event, context):
         'body': json.dumps('Document processed successfully')
     }
 
-def classify_document(document_content):
-    # TODO Implement your classification logic here
-    return "classification_type"
-
 def create_enrichment_instructions(classification):
-    # TODO Implement your logic to create enrichment instructions based on classification
-    return "enrichment instructions based on classification"
+    # Implement your logic to create enrichment instructions based on classification
+    return f"Enrichment instructions for {classification}"
 
 def invoke_bedrock_for_enrichment(document_content, enrichment_instructions):
-    # TODO Implement the call to Bedrock with the document content and enrichment instructions
-    response = bedrock.enrich(
-        DocumentContent=document_content,
-        Instructions=enrichment_instructions
-    )
-    return response['EnrichedContent']
+    # Implement your logic to call Bedrock for enrichment
+    return f"Enriched content based on {document_content} with {enrichment_instructions}"
+
+def summarize_document(document_content):
+    return f"""
+    Given the document
+
+    <document>{document_content}</document>
+
+    Give me a 50 word summary of this document that can be shown alongside search results. 
+
+    Return only the summary text with no preamble. 
+    """
