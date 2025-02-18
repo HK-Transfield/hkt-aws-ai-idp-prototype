@@ -25,8 +25,10 @@ echo -e "${BOLD}${RED}
 
 ${RESET}"
 echo "An AWS Backed Intelligent Document Processing Solution"
-echo "HK Transfield, 2024"
+echo "HK Transfield, 2025"
 echo -e "${BOLD}${RED}~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~${RESET}"
+
+cd deployments/
 
 terraform init
 
@@ -54,12 +56,9 @@ else
     if [[ "$RESPONSE" == "yes" ]]; then
         echo "Applying Terraform changes..."
         terraform apply "$PLANFILE"
-    
+        python -m streamlit run app/app.py    
     else
         echo "Skipping Terraform apply."
     fi
 fi
 
-cd app
-
-python -m streamlit run app.py
