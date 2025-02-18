@@ -1,3 +1,9 @@
+/*
+Name:     Lambda Function Builder Module
+Project:  AWS Generative AI Backed IDP Solution
+Author:   HK Transfield, 2024
+*/
+
 ################################################################################
 # Lambda function configurations
 ################################################################################
@@ -35,4 +41,31 @@ variable "iam_policy_name" {
 variable "iam_policy_json" {
   type        = string
   description = "The rendered JSON policy document to be attached to the IAM policy"
+}
+
+################################################################################
+# Storage configurations
+################################################################################
+
+variable "s3_bucket_name" {
+  type        = string
+  description = "The name of the S3 bucket to store the Lambda function zip file"
+}
+
+################################################################################
+# Logging and Monitoring configurations
+################################################################################
+
+variable "cloudwatch_log_retention_in_days" {
+  type        = number
+  description = "The number of days to retain the log events in the log group"
+}
+
+################################################################################
+# Other configurations
+################################################################################
+
+variable "tags" {
+  type        = map(string)
+  description = "A mapping of tags to assign to the resource"
 }
