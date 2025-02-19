@@ -47,3 +47,47 @@ variable "bucket_name" {
   type        = string
 
 }
+
+variable "allowed_ingress_ips" {
+  description = "List of allowed IPs to access the Streamlit application"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "allowed_egress_ips" {
+  description = "List of allowed IPs to access the Streamlit application"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "min_capacity" {
+  description = "Minimum capacity for the ECS service"
+  type        = number
+  default     = 1
+}
+
+variable "max_capacity" {
+  description = "Maximum capacity for the ECS service"
+  type        = number
+  default     = 3
+}
+
+variable "retention_in_days" {
+  description = "Retention period for the CloudWatch logs"
+  type        = number
+  default     = 7
+}
+
+variable "aws_lb_target_group_arn" {
+  description = "ARN of the target group for the ECS service"
+  type        = string
+}
+
+################################################################################
+# Other configurations
+################################################################################
+
+variable "tags" {
+  type        = map(string)
+  description = "A mapping of tags to assign to the resource"
+}
