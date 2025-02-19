@@ -39,7 +39,7 @@ locals {
 
 # capture data into an S3 bucket to trigger the following Lambda function
 module "captured_documents_bucket" {
-  source = "./modules/document-storage"
+  source = "../modules/document-storage"
 
   bucket_name   = local.captured_documents_bucket_name
   force_destroy = true
@@ -75,7 +75,7 @@ data "aws_iam_policy_document" "allow_lambda_textract_async_job" {
 
 # Start Textract async detection job
 module "textract_events_lambda_function" {
-  source = "./modules/lambda-function-builder"
+  source = "../modules/lambda-function-builder"
 
   lambda_filename = "1-start-textract-async-detection-job"
 
@@ -90,7 +90,7 @@ module "textract_events_lambda_function" {
 }
 
 module "textract_events" {
-  source = "./modules/textract-event-handler"
+  source = "../modules/textract-event-handler"
 
   sns_topic_name = "${local.updates_name}-topic"
   sqs_queue_name = "${local.updates_name}-queue"
@@ -150,7 +150,7 @@ data "aws_iam_policy_document" "allow_lambda_classify_documents" {
 
 # Start Bedrock classification job
 module "classify_textract_output_lambda_function" {
-  source = "./modules/lambda-function-builder"
+  source = "../modules/lambda-function-builder"
 
   lambda_filename = "2a-classify-textract-output-bedrock"
 
@@ -166,7 +166,7 @@ module "classify_textract_output_lambda_function" {
 }
 
 module "classified_documents_bucket" {
-  source = "./modules/document-storage"
+  source = "../modules/document-storage"
 
   bucket_name   = local.classified_documents_bucket_name
   force_destroy = true
@@ -201,7 +201,7 @@ data "aws_iam_policy_document" "allow_lambda_enrich_content" {
 }
 
 module "entity_extraction_and_content_enrichment_lambda_function" {
-  source = "./modules/lambda-function-builder"
+  source = "../modules/lambda-function-builder"
 
   lambda_filename = "3-entity-extraction-and-content-enrichment"
 
@@ -225,7 +225,7 @@ locals {
 }
 
 module "human_review_and_validation_lambda_function" {
-  source = "./modules/lambda-function-builder"
+  source = "../modules/lambda-function-builder"
 
   lambda_filename = "5-human-review-and-validation"
 
@@ -314,14 +314,14 @@ resource "aws_sns_topic_policy" "validation_notifications" {
 }
 
 module "extracted_data_and_enriched_documents_bucket" {
-  source = "./modules/document-storage"
+  source = "../modules/document-storage"
 
   bucket_name   = local.validated_documents_bucket_name
   force_destroy = true
 }
 
 module "results_validation_lambda_function" {
-  source = "./modules/lambda-function-builder"
+  source = "../modules/lambda-function-builder"
 
   lambda_filename = "4-results-validation"
 
