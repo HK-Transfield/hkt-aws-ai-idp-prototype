@@ -45,6 +45,13 @@ resource "aws_ecs_task_definition" "this" {
       }
     }
   }])
+
+  tags = merge(
+    var.tags,
+    {
+      "Name" = var.app_name
+    },
+  )
 }
 
 resource "aws_ecs_service" "this" {
@@ -55,15 +62,56 @@ resource "aws_ecs_service" "this" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = var.subnet_ids
-    security_groups  = [aws_security_group.streamlit.id]
-    assign_public_ip = true
+    subnets         = var.subnet_ids
+    security_groups = [aws_security_group.streamlit.id]
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.streamlit.arn
+    target_group_arn = var.aws_lb_target_group_arn
     container_name   = var.app_name
     container_port   = var.container_port
+  }
+
+  tags = merge(
+    var.tags,
+    {
+      "Name" = var.app_name
+    },
+  )
+}
+
+################################################################################
+# APPLICATION AUTO SCALING
+################################################################################
+
+resource "aws_appautoscaling_target" "ecs" {
+  max_capacity       = var.max_capacity
+  min_capacity       = var.min_capacity
+  resource_id        = "service/${aws_ecs_cluster.this.name}/${aws_ecs_service.this.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+
+  tags = merge(
+    var.tags,
+    {
+      "Name" = var.app_name
+    },
+  )
+}
+
+resource "aws_appautoscaling_policy" "ecs" {
+  name               = "${var.app_name}-scale-policy"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs.service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+
+    target_value = 70
   }
 }
 
@@ -71,8 +119,12 @@ resource "aws_ecs_service" "this" {
 # IAM ENTITIES
 ################################################################################
 
+locals {
+  iam_role_name = "${var.app_name}-ecs-execution"
+}
+
 resource "aws_iam_role" "ecs_execution" {
-  name = "${var.app_name}-ecs-execution"
+  name = local.iam_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -86,6 +138,13 @@ resource "aws_iam_role" "ecs_execution" {
       }
     ]
   })
+
+  tags = merge(
+    var.tags,
+    {
+      "Name" = local.iam_role_name
+    },
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_execution" {
@@ -97,13 +156,32 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
 # MONITORING AND LOGGING
 ################################################################################
 
+locals {
+  log_group_name = "/ecs/${var.app_name}"
+}
+
 resource "aws_cloudwatch_log_group" "this" {
-  name              = "/ecs/${var.app_name}"
-  retention_in_days = 30
+  name              = local.log_group_name
+  retention_in_days = var.retention_in_days
+
+  tags = merge(
+    var.tags,
+    {
+      "Name" = local.log_group_name
+    },
+  )
+}
+
+################################################################################
+# SECURITY GROUPS
+################################################################################
+
+locals {
+  sg_name = "${var.app_name}-sg"
 }
 
 resource "aws_security_group" "streamlit" {
-  name        = "${var.app_name}-sg"
+  name        = local.sg_name
   description = "Security group for Streamlit application"
   vpc_id      = var.vpc_id
 
@@ -111,70 +189,20 @@ resource "aws_security_group" "streamlit" {
     from_port   = var.container_port
     to_port     = var.container_port
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_ingress_ips
   }
 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-resource "aws_lb" "streamlit" {
-  name               = "${var.app_name}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = var.subnet_ids
-}
-
-resource "aws_security_group" "alb" {
-  name        = "${var.app_name}-alb-sg"
-  description = "Security group for ALB"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_egress_ips
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  tags = merge(
+    var.tags,
+    {
+      "Name" = local.sg_name
+    },
+  )
 }
-
-resource "aws_lb_target_group" "streamlit" {
-  name        = "${var.app_name}-tg"
-  port        = var.container_port
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    healthy_threshold   = 2
-    unhealthy_threshold = 10
-    timeout             = 60
-    interval            = 300
-    path                = "/"
-  }
-}
-
-resource "aws_lb_listener" "streamlit" {
-  load_balancer_arn = aws_lb.streamlit.arn
-  port              = "80"
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.streamlit.arn
-  }
-}
-
-
