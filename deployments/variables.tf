@@ -9,3 +9,9 @@ variable "domain_name" {
   type        = string
   default     = "IDPSagemakerDomain"
 }
+
+variable "region" {
+  description = "The region name where to deploy the IDP"
+  type        = string
+  default     = "us-east-1"
+}
