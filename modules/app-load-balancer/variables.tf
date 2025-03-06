@@ -8,26 +8,21 @@ variable "subnet_ids" {
   type        = list(string)
 }
 
-variable "environment" {
-  description = "Environment name"
-  type        = string
-}
-
 variable "app_name" {
   description = "Application name"
   type        = string
 }
 
-variable "allowed_ingress_ips" {
+variable "allowed_ingress_ip" {
   description = "List of allowed IPs to access the ALB"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
+  type        = string
+  default     = "0.0.0.0/0"
 }
 
-variable "allowed_egress_ips" {
+variable "allowed_egress_ip" {
   description = "List of allowed IPs to access the ALB"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
+  type        = string
+  default     = "0.0.0.0/0"
 }
 
 variable "domain_name" {

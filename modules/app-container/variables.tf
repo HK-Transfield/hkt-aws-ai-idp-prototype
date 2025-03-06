@@ -48,16 +48,16 @@ variable "bucket_name" {
 
 }
 
-variable "allowed_ingress_ips" {
+variable "allowed_ingress_ip" {
   description = "List of allowed IPs to access the Streamlit application"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
+  type        = string
+  default     = "0.0.0.0/0"
 }
 
-variable "allowed_egress_ips" {
+variable "allowed_egress_ip" {
   description = "List of allowed IPs to access the Streamlit application"
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
+  type        = string
+  default     = "0.0.0.0/0"
 }
 
 variable "min_capacity" {
@@ -78,7 +78,7 @@ variable "retention_in_days" {
   default     = 7
 }
 
-variable "aws_lb_target_group_arn" {
+variable "alb_target_group_arn" {
   description = "ARN of the target group for the ECS service"
   type        = string
 }
