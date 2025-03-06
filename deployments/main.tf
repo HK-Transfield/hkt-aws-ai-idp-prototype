@@ -84,7 +84,7 @@ module "streamlit_load_balancer" {
   source      = "../modules/app-load-balancer"
   app_name    = "streamlit"
   vpc_id      = module.streamlit_network.vpc_id
-  subnet_ids  = [module.streamlit_network.private_a_subnet_id, module.streamlit_network.private_b_subnet_id]
+  subnet_ids  = [module.streamlit_network.public_a_subnet_id, module.streamlit_network.public_b_subnet_id]
   domain_name = "" # TODO: Add domain name
 
   tags = {
@@ -96,8 +96,13 @@ module "streamlit_load_balancer" {
 module "streamlit_container" {
   source = "../modules/app-container"
 
-  container_name = "streamlit"
-  container_port = 8501
+  app_name             = "streamlit"
+  docker_image         = "" # TODO: Add docker imag
+  bucket_name          = "" # TODO: Add bucket name
+  vpc_id               = module.streamlit_network.vpc_id
+  subnet_ids           = [module.streamlit_network.private_a_subnet_id, module.streamlit_network.private_b_subnet_id]
+  alb_target_group_arn = module.streamlit_load_balancer.target_group_arn
+  container_port       = 8501
 
   tags = {
     project = local.project_tag
