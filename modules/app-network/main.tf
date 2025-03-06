@@ -183,7 +183,7 @@ locals {
   sg_name = "${local.vpc_name}-alb-sg"
 }
 
-resource "aws_security_group" "alb" {
+resource "aws_security_group" "this" {
   name        = local.sg_name
   description = "Security group for application load balancer"
   vpc_id      = aws_vpc.this.id
@@ -194,34 +194,28 @@ resource "aws_security_group" "alb" {
   }
 }
 
-resource "aws_security_group_ingress_rule" "allow_http" {
-  type              = "ingress"
+resource "aws_vpc_security_group_ingress_rule" "allow_http" {
+  security_group_id = aws_security_group.this.id
+  description       = "Allow HTTP from anywhere"
   from_port         = 80
   to_port           = 80
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  ipv6_cidr_blocks  = ["::/0"]
-  security_group_id = aws_security_group.alb.id
-  description       = "Allow HTTP from anywhere"
+  ip_protocol       = "tcp"
+  cidr_ipv4         = "0.0.0.0/0"
 }
 
-resource "aws_security_group_ingress_rule" "allow_https" {
-  type              = "ingress"
+resource "aws_vpc_security_group_ingress_rule" "allow_https" {
+  security_group_id = aws_security_group.this.id
+  description       = "Allow HTTPS from anywhere"
   from_port         = 443
   to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  ipv6_cidr_blocks  = ["::/0"]
-  security_group_id = aws_security_group.alb.id
-  description       = "Allow HTTPS from anywhere"
+  ip_protocol       = "tcp"
+  cidr_ipv4         = "0.0.0.0/0"
 }
 
-resource "aws_security_group_egress_rule" "allow_outbound" {
-  type              = "egress"
+resource "aws_vpc_security_group_egress_rule" "allow_outbound" {
+  security_group_id = aws_security_group.this.id
   from_port         = 0
   to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
-  ipv6_cidr_blocks  = ["::/0"]
-  security_group_id = aws_security_group.alb.id
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
 }
