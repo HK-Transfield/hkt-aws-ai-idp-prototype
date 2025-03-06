@@ -63,7 +63,7 @@ locals {
 }
 
 # locally archive the lambda source code
-data "archive_file" "local" {
+data "archive_file" "this" {
   type        = "zip"
   source_file = local.lambda_source
   output_path = local.lambda_output
@@ -125,7 +125,7 @@ resource "aws_sns_topic" "lambda_error" {
 }
 
 resource "aws_cloudwatch_log_group" "this" {
-  name              = "/aws/lambda/${aws_lambda_function.this.function_name}"
+  name              = "/aws/lambda/${var.lambda_filename}"
   retention_in_days = var.cloudwatch_log_retention_in_days
 
   tags = merge(
