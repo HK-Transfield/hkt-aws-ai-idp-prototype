@@ -12,6 +12,50 @@ locals {
   db_name                         = "${local.project_name}-document-metadata"
 }
 
+################################################################################
+# LAMBDA FUNCTION FOR RESULTS VALIDATION
+################################################################################
+
+################################################################################
+# LAMBDA FUNCTION FOR RESULTS VALIDATION
+################################################################################
+
+data "aws_iam_policy_document" "allow_lambda_validate_document_content" {
+  statement {
+    sid    = "" #TODO: Add SID
+    effect = "Allow"
+
+    actions = [
+      # TODO: Add actions
+    ]
+    resources = [""] #TODO: Add resources
+  }
+}
+
+module "results_validation_lambda_function" {
+  source = "../modules/lambda-function-builder"
+
+  lambda_filename                  = "4-results-validation"
+  cloudwatch_log_retention_in_days = 7
+
+  environment_variables = {
+    SOMETHING = "" #TODO: Add env variables?
+  }
+
+  iam_role_name   = "AllowLambdaValidateDocumentContent"
+  iam_policy_name = "AllowLambdaValidateDocumentContent"
+  iam_policy_json = data.aws_iam_policy_document.allow_lambda_validate_document_content
+
+  tags = {
+    project = local.project_tag
+    name    = "4-results-validation"
+  }
+}
+
+################################################################################
+# LAMBDA FUNCTION FOR HUMAN REVIEW
+################################################################################
+
 module "human_review_and_validation_lambda_function" {
   source = "../modules/lambda-function-builder"
 
@@ -19,7 +63,7 @@ module "human_review_and_validation_lambda_function" {
   cloudwatch_log_retention_in_days = 7
 
   environment_variables = {
-    OUTPUT_BUCKET  = aws_s3_bucket.extracted_data_and_enriched_documents_bucket.bucket
+    OUTPUT_BUCKET  = module.extracted_data_and_enriched_documents_bucket.bucket_id
     DYNAMODB_TABLE = aws_dynamodb_table.job_details.name
   }
 
@@ -54,7 +98,7 @@ data "aws_iam_policy_document" "human_review_policy" {
       "s3:GetObject",
       "s3:PutObject"
     ]
-    resources = ["${aws_s3_bucket.validated_documents.arn}/*"]
+    resources = [""] #TODO: Add resource to place validated content?
   }
 
   statement {
@@ -84,6 +128,10 @@ data "aws_iam_policy_document" "human_review_policy" {
   }
 }
 
+################################################################################
+# SNS TOPIC FOR VALIDATION NOTIFICATIONS
+################################################################################
+
 resource "aws_sns_topic" "validation_notifications" {
   name = "${local.project_name}-validation-notifications"
 }
@@ -107,37 +155,9 @@ resource "aws_sns_topic_policy" "validation_notifications" {
   })
 }
 
-module "extracted_data_and_enriched_documents_bucket" {
-  source = "../modules/document-storage"
-
-  bucket_name   = local.validated_documents_bucket_name
-  force_destroy = true
-
-  tags = {
-    project = local.project_tag
-    name    = local.validated_documents_bucket_name
-  }
-}
-
-module "results_validation_lambda_function" {
-  source = "../modules/lambda-function-builder"
-
-  lambda_filename                  = "4-results-validation"
-  cloudwatch_log_retention_in_days = 7
-
-  environment_variables = {
-    OUTPUT_BUCKET = aws_s3_bucket.validated_documents.bucket
-  }
-
-  iam_role_name   = "AllowLambdaValidateDocumentContent"
-  iam_policy_name = "AllowLambdaValidateDocumentContent"
-  iam_policy_json = data.aws_iam_policy_document.lambda_exec_policy.json
-
-  tags = {
-    project = local.project_tag
-    name    = "4-results-validation"
-  }
-}
+################################################################################
+# EXTRACTED AND VERIFIED DATA DYNAMODB TABLE
+################################################################################\
 
 resource "aws_dynamodb_table" "job_details" {
   name           = local.db_name
