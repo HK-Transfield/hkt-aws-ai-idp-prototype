@@ -1,6 +1,12 @@
-################################################################################
-# DOCUMENT CLASSIFICATION
-################################################################################
+/*
+Name:     IDP Document Classification
+Project:  AWS Generative AI Backed IDP Solution
+Author:   HK Transfield, 2025
+
+This configuration is the second stage of the IDP pipeline. Once data has been
+captured and extracted, it needs to be categorised into specific classes before
+further classification can be performed.
+*/
 
 locals {
   classified_documents_bucket_name = "${local.project_name}-classified-documents"
@@ -8,11 +14,9 @@ locals {
   bedrock_model_id                 = "anthropic.claude-3-sonnet-20240229-v1:0"
 }
 
-resource "aws_lambda_event_source_mapping" "textract_output" {
-  event_source_arn = module.textract_events.sqs_queue_arn
-  function_name    = module.textract_events_lambda_.function_arn
-  batch_size       = 10
-}
+################################################################################
+# LAMBDA FUNCTION FOR CLASSIFYING TEXTRACT OUTPUT
+################################################################################
 
 # allow lambda access to the SQS, Textract, and Bedrock API
 data "aws_iam_policy_document" "allow_lambda_classify_documents" {
@@ -58,7 +62,7 @@ module "classify_textract_output_lambda_function" {
   cloudwatch_log_retention_in_days = 7
 
   environment_variables = {
-    OUTPUT_BUCKET     = aws_s3_bucket.classified_documents_bucket.bucket
+    OUTPUT_BUCKET     = module.classified_documents_bucket.bucket_id
     OUTPUT_OBJECT_KEY = local.classified_documents_object_key
     BEDROCK_MODEL_ID  = local.bedrock_model_id
   }
@@ -72,6 +76,10 @@ module "classify_textract_output_lambda_function" {
     name    = "2-classify-textract-output"
   }
 }
+
+################################################################################
+# CLASSIFIED DOCUMENTS BUCKET
+################################################################################
 
 module "classified_documents_bucket" {
   source = "../modules/document-storage"
