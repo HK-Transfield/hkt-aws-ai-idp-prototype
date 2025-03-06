@@ -1,11 +1,20 @@
-################################################################################
-# UPLOADED DOCUMENT STORAGE
-################################################################################
+/*
+Name:     IDP Document Ingestion and Text Extraction
+Project:  AWS Generative AI Backed IDP Solution
+Author:   HK Transfield, 2025
+
+This configuration is the first stage of the IDP pipeline. An end-user will
+upload some document, which will trigger a Textract async detection job.
+*/
 
 locals {
   updates_name                   = "${local.project_name}-textract-job"
   captured_documents_bucket_name = "${local.project_name}-captured-documents"
 }
+
+################################################################################
+# UPLOADED DOCUMENT STORAGE
+################################################################################
 
 # capture data into an S3 bucket to trigger the following Lambda function
 module "captured_documents_bucket" {
@@ -88,4 +97,10 @@ module "textract_events" {
     project = local.project_tag
     name    = local.updates_name
   }
+}
+
+resource "aws_lambda_event_source_mapping" "textract_output" {
+  event_source_arn = module.textract_events.sqs_queue_arn
+  function_name    = module.textract_events_lambda_function.function_arn
+  batch_size       = 10
 }
