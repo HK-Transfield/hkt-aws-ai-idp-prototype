@@ -47,10 +47,11 @@ variable "iam_policy_json" {
 # Storage configurations
 ################################################################################
 
-variable "s3_bucket_name" {
-  type        = string
-  description = "The name of the S3 bucket to store the Lambda function zip file"
-}
+# ? I can't remember the original plan for this variable
+# variable "s3_bucket_name" {
+#   type        = string
+#   description = "The name of the S3 bucket to store the Lambda function zip file"
+# }
 
 ################################################################################
 # Logging and Monitoring configurations
