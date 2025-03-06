@@ -13,23 +13,29 @@ target group based on the specified path pattern.
 # LOAD BALANCER
 ################################################################################
 
+locals {
+  alb_name = "${var.app_name}-alb"
+}
+
 resource "aws_lb" "this" {
-  name               = "${var.app_name}-${var.environment}-alb"
+  name               = local.alb_name
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
+  security_groups    = [aws_security_group.this.id]
   subnets            = var.subnet_ids
 
   enable_deletion_protection = false
 
-  tags = {
-    Name        = "${var.app_name}-${var.environment}-alb"
-    Environment = var.environment
-  }
+  tags = merge(
+    var.tags,
+    {
+      Name = local.alb_name
+    }
+  )
 }
 
 resource "aws_lb_target_group" "this" {
-  name        = "${var.app_name}-${var.environment}-tg"
+  name        = "${local.alb_name}-tg"
   port        = 8501
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -44,10 +50,12 @@ resource "aws_lb_target_group" "this" {
     port                = "traffic-port"
   }
 
-  tags = {
-    Name        = "${var.app_name}-${var.environment}-tg"
-    Environment = var.environment
-  }
+  tags = merge(
+    var.tags,
+    {
+      Name = "${local.alb_name}-tg"
+    }
+  )
 }
 
 resource "aws_lb_listener" "http" {
@@ -87,8 +95,7 @@ resource "aws_acm_certificate" "this" {
   tags = merge(
     var.tags,
     {
-      Name        = "${var.app_name}-${var.environment}-cert"
-      Environment = var.environment
+      Name = "${local.alb_name}-cert"
     }
   )
 }
@@ -97,29 +104,34 @@ resource "aws_acm_certificate" "this" {
 # SECURITY GROUP
 ################################################################################
 
-resource "aws_security_group" "alb" {
-  name        = "${var.app_name}-${var.environment}-alb-sg"
+resource "aws_security_group" "this" {
+  name        = "${local.alb_name}-sg"
   description = "Security group for ALB"
   vpc_id      = var.vpc_id
+}
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_ingress_ips # Replace 0.0.0.0/0 with a list of trusted IPs
-  }
 
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_ingress_ips # Restrict HTTPS access
-  }
+resource "aws_vpc_security_group_ingress_rule" "allow_http" {
+  security_group_id = aws_security_group.this.id
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+  cidr_ipv4         = var.allowed_ingress_ip
+}
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = var.allowed_egress_ips
-  }
+resource "aws_vpc_security_group_ingress_rule" "allow_https" {
+  security_group_id = aws_security_group.this.id
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+  cidr_ipv4         = var.allowed_ingress_ip
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_outbound" {
+  security_group_id = aws_security_group.this.id
+  from_port         = 0
+  to_port           = 0
+  ip_protocol       = "-1"
+  cidr_ipv4         = var.allowed_egress_ip
+
 }

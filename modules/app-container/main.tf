@@ -63,11 +63,11 @@ resource "aws_ecs_service" "this" {
 
   network_configuration {
     subnets         = var.subnet_ids
-    security_groups = [aws_security_group.streamlit.id]
+    security_groups = [aws_security_group.this.id]
   }
 
   load_balancer {
-    target_group_arn = var.aws_lb_target_group_arn
+    target_group_arn = var.alb_target_group_arn
     container_name   = var.app_name
     container_port   = var.container_port
   }
@@ -180,24 +180,10 @@ locals {
   sg_name = "${var.app_name}-sg"
 }
 
-resource "aws_security_group" "streamlit" {
+resource "aws_security_group" "this" {
   name        = local.sg_name
   description = "Security group for Streamlit application"
   vpc_id      = var.vpc_id
-
-  ingress {
-    from_port   = var.container_port
-    to_port     = var.container_port
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_ingress_ips
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = var.allowed_egress_ips
-  }
 
   tags = merge(
     var.tags,
@@ -205,4 +191,20 @@ resource "aws_security_group" "streamlit" {
       "Name" = local.sg_name
     },
   )
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_tcp" {
+  security_group_id = aws_security_group.this.id
+  from_port         = var.container_port
+  to_port           = var.container_port
+  ip_protocol       = "tcp"
+  cidr_ipv4         = var.allowed_ingress_ip
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_outbound" {
+  security_group_id = aws_security_group.this.id
+  from_port         = 0
+  to_port           = 0
+  ip_protocol       = "-1"
+  cidr_ipv4         = var.allowed_egress_ip
 }
